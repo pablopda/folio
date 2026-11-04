@@ -21,17 +21,32 @@ const MAX_RECENT = 8;
 export const MAX_RECENT_FILE_BYTES = 50 * 1024 * 1024;
 let connection: Promise<IDBDatabase> | null = null;
 
-function open(): Promise<IDBDatabase> {
+// All reader frames share one controller. Publish completed mutations in its window,
+// including evictions and best-effort failures, so startup eligibility is rechecked.
+const RECENT_CHANGED = "folio:recent-changed";
+function recentWindow() { return window.top ?? window; }
+function notifyRecent() { recentWindow().dispatchEvent(new Event(RECENT_CHANGED)); }
+export function subscribeRecent(listener: () => void) {
+  const target = recentWindow();
+  target.addEventListener(RECENT_CHANGED, listener);
+  return () => target.removeEventListener(RECENT_CHANGED, listener);
+}
+
+export function openFolioDatabase(): Promise<IDBDatabase> {
   if (connection) return connection;
   connection = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 4);
-    req.onupgradeneeded = () => {
+    const req = indexedDB.open(DB_NAME, 5);
+    req.onupgradeneeded = event => {
       const database = req.result;
       // Older cards can pair one file's preview and position with another file's bytes.
-      if (database.objectStoreNames.contains(STORE)) req.transaction!.objectStore(STORE).name = LEGACY;
-      database.createObjectStore(STORE, { keyPath: "id" });
+      if (event.oldVersion < 4) {
+        if (database.objectStoreNames.contains(STORE)) req.transaction!.objectStore(STORE).name = LEGACY;
+        database.createObjectStore(STORE, { keyPath: "id" });
+      }
       if (!database.objectStoreNames.contains(NOTES)) database.createObjectStore(NOTES, { keyPath: "id" });
       if (!database.objectStoreNames.contains(AI)) database.createObjectStore(AI, { keyPath: "id" });
+      database.createObjectStore("versions", { keyPath: "id" }).createIndex("byFamily", ["family", "number"], { unique: true });
+      database.createObjectStore("versionPdfs");
     };
     req.onsuccess = () => {
       const database = req.result;
@@ -46,7 +61,7 @@ function open(): Promise<IDBDatabase> {
 }
 
 async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>, store = STORE): Promise<T> {
-  const db = await open();
+  const db = await openFolioDatabase();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(store, mode);
     const req = fn(transaction.objectStore(store));
@@ -126,12 +141,12 @@ export async function saveRecent(file: RecentFile) {
     });
   } catch {
     /* storage may be unavailable (private mode); recent files are best-effort */
-  }
+  } finally { notifyRecent(); }
 }
 
 export async function updateLastPage(id: string, lastPage: number) {
   try {
-    const database = await open();
+    const database = await openFolioDatabase();
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(STORE, "readwrite");
       const store = transaction.objectStore(STORE);
@@ -148,7 +163,7 @@ export async function updateLastPage(id: string, lastPage: number) {
 
 export async function clearRecent() {
   try {
-    const db = await open();
+    const db = await openFolioDatabase();
     const stores = db.objectStoreNames.contains(LEGACY) ? [STORE, LEGACY] : [STORE];
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(stores, "readwrite");
@@ -158,7 +173,7 @@ export async function clearRecent() {
     });
   } catch {
     /* ignore */
-  }
+  } finally { notifyRecent(); }
 }
 
 export async function removeRecent(id: string) {
@@ -166,7 +181,7 @@ export async function removeRecent(id: string) {
     await tx("readwrite", (s) => s.delete(id));
   } catch {
     /* ignore */
-  }
+  } finally { notifyRecent(); }
 }
 
 // ── Highlights and notes ──────────────────────────────────────────────

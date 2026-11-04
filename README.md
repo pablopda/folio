@@ -36,6 +36,23 @@ Or build Folio yourself from source (below).
 
 ## Features
 
+### Files inside a PDF
+
+Open **Files** in the sidebar to list document attachments and file annotations, including annotations on pages you
+haven't visited. Save any supported file, or choose **Read PDF** to read it in a temporary, read-only tab. Files
+without a PDF extension offer **Try as PDF**. Your place and edits in the parent remain intact; **Back to parent**
+returns to that document. Once extracted, the child stays open even if you close its parent.
+
+Attachment tabs have page navigation, zoom, text selection, and **Save original**. They do not enter Recent or
+save reading state, annotations, or AI history. To edit a child or explore its own attachments, save it and open it
+normally. Embedded-stream passwords and the attached PDF's own password are handled separately; saving original
+child bytes does not require unlocking the child PDF.
+
+This is a flat list, not a PDF Portfolio's original layout or folder tree. Associated files outside the document's
+attachment name tree and page file annotations may not appear. The list displays up to 10,000 entries; extraction
+accepts files up to 300 MiB **after decoding**. These checks do not bound PDF.js's decoding memory. Compatibility
+with a particular Portfolio should be checked with that file.
+
 ### Open PDFs and web links
 
 - **Document tabs.** Pick or drop several PDFs together, or choose **More → New tab**. The tab strip appears beneath
@@ -79,6 +96,19 @@ URL opening, webpage conversion, and Word conversion require the desktop app. Fa
 - **Light and dark themes**, plus an independent **⋯ → PDF dark mode** setting that dims bright pages while keeping
   photos and figures in their original colors, including in thumbnails. Both settings survive restarts.
 
+### Edit existing text and images
+
+Choose **Edit mode**, then click the text you want to change and type on the page. Press **Enter** or click outside the line to apply it. **Esc** cancels typing. Clear a line to delete it.
+
+Click an embedded picture and choose **Replace image…** to select a PNG or JPEG. You can leave Edit mode to read your changes or use **Save copy** to export and open the edited PDF.
+
+Open **More → Version history** to review your changes. Saving a changed copy keeps the original PDF and a numbered version on this device. Text edits show the old and new wording, and image replacements show the filename and page. Open or download an earlier version from the panel. History is available for unencrypted PDFs up to 50 MB and can be cleared per document.
+
+Text keeps its original font and position. Longer replacements can overlap neighboring content, so check the page after applying a change.
+Only characters available in that font can be used. Scanned words, outlined lettering, and objects inside grouped artwork
+cannot be edited as text. Image replacement supports embedded image objects on pages without inline image data.
+The editor works with unsigned, unencrypted PDFs.
+
 ### Highlight, draw, and take notes
 
 - **Select text in scans.** Folio starts recognizing English text in the background when you open a PDF.
@@ -105,6 +135,8 @@ URL opening, webpage conversion, and Word conversion require the desktop app. Fa
   ordinary, non-password-protected PDF. Use **Save a copy** to share page annotations with other readers.
 
 ### Add handwritten signatures
+
+Choose **Sign** in the toolbar to add a signature.
 
 - **Capture on paper:** sign with dark ink on white paper, then use your camera or upload a PNG, JPEG, or WebP photo.
 - **Clean up the image:** crop to the signature and adjust ink sensitivity to remove the paper background. Capture
@@ -297,3 +329,5 @@ privately, see [SECURITY.md](SECURITY.md).
 
 [MIT](LICENSE). Folio includes third-party software under its own licenses; see
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Implementation milestones and validation evidence are recorded in [the execution log](docs/project-log/EXECUTION-LOG.md).
